@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мария - Виртуален сервитьор</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f0f8ff; margin: 0; padding: 20px; color: #333; }
+        img { max-width: 300px; height: auto; border-radius: 20px; margin: 20px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        h1 { margin: 10px 0 5px; font-size: 28px; }
+        button { font-size: 26px; padding: 18px 45px; background: #4CAF50; color: white; border: none; border-radius: 15px; margin: 20px 0; }
+        button:active { background: #388E3C; }
+        .status { font-size: 21px; margin: 15px; min-height: 30px; font-weight: bold; color: #1976D2; }
+        .box { background: white; padding: 15px; margin: 12px auto; max-width: 500px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <h1>👋 Здравейте! Аз съм Вики</h1>
+    <p>Вашият виртуален сервитьор</p>
+    
+    <!-- Смени този линк с твоята картинка -->
+    <img src="https://i.imgur.com/uI8L2Yz.png" alt="Вики">
+
+    <button onclick="startListening()">🎤 Натисни за активиране </button>
+    
+    <div class="status" id="status">Натисни бутона и говори...</div>
+    
+    <div class="box">
+        <strong>Чух:</strong><br>
+        <span id="heard" style="color:#555;"></span>
+    </div>
+    
+    <div class="box">
+        <strong>Отговор:</strong><br>
+        <span id="response" style="color:#2e7d32; white-space: pre-wrap;"></span>
+    </div>
+
+    <script>
+        let currentOrders = [];
+        const statusEl = document.getElementById('status');
+        const heardEl = document.getElementById('heard');
+        const responseEl = document.getElementById('response');
+
+        // ВАЖНО: Сложи твоя ключ тук
+        const API_KEY = "AIzaSyBUKikzLwxJhYTjIMjBKrYFLsfdO1Wld-g"; 
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+        const menuContext = `
+        Ти си Мария, любезен виртуален сервитьор. Твоето меню е:
+        - Шопска салата (8.90 лв)
+        - Пилешка супа (6.50 лв)
+        - Цезар салата (11.90 лв)
+        - Пържола свинско (19.90 лв)
+        - Веган боул (12.90 лв)
+        - Домашна лимонада (4.50 лв)
+        
+        ПРАВИЛА:
+        1. Отговаряй кратко и любезно на български.
+        2. Когато някой поръча, потвърди какво си чула.
+        3. ВИНАГИ питай дали някой друг на масата иска да поръча нещо.
+        4. Чак когато потвърдят, че никой друг няма да поръчва, кажи "Поръчката е приета и изпратена към кухнята".
+        `;
+
+        function startListening() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {
+                alert("Вашият браузър не поддържа гласово разпознаване.");
+                return;
+            }
+            const rec = new SR();
+            rec.lang = 'bg-BG';
+            
+            statusEl.textContent = "🎤 Слушам... Говори сега!";
+            
+            rec.onresult = (e) => {
+                const text = e.results[0][0].transcript.trim();
+                heardEl.textContent = text;
+                callGemini(text);
+            };
+
+            rec.onerror = () => {
+                statusEl.textContent = "Грешка в микрофона. Опитай пак.";
+            };
+
+            rec.start();
+        }
+
+        async function callGemini(userText) {
+            statusEl.textContent = "🤔 Мария мисли...";
+            
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [{ text: `${menuContext}\n\nПотребителят каза: ${userText}` }]
+                }]
+            };
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                const aiResponse = data.candidates[0].content.parts[0].text;
+
+                responseEl.textContent = aiResponse;
+                statusEl.textContent = "Мария отговори:";
+                speak(aiResponse);
+
+                // Автоматично пускане на микрофона след като Мария спре да говори
+                // (Приблизително изчакване според дължината на текста)
+                setTimeout(startListening, aiResponse.length * 80 + 1000);
+
+            } catch (err) {
+                console.error(err);
+                statusEl.textContent = "Грешка при връзка с ИИ.";
+            }
+        }
+
+        function speak(text) {
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'bg-BG';
+            u.rate = 1.0;
+            speechSynthesis.speak(u);
+        }
+    </script>
+</body>
+</html>
