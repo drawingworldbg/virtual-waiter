@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вики - Виртуален сервитьор</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f0f8ff; margin: 0; padding: 20px; color: #333; }
+        img { max-width: 300px; height: auto; border-radius: 20px; margin: 20px 0; }
+        h1 { margin: 10px 0 5px; font-size: 28px; }
+        button { font-size: 24px; padding: 18px 45px; background: #4CAF50; color: white; border: none; border-radius: 15px; margin: 20px 0; }
+        .status { font-size: 20px; margin: 15px; font-weight: bold; color: #1976D2; }
+        .box { background: white; padding: 15px; margin: 12px auto; max-width: 500px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <h1>👋 Здравейте! Аз съм Вики</h1>
+    <p>Вашият виртуален сервитьор</p>
+    
+    <img src="https://i.ibb.co/0jZ8v3k/waitress.png" alt="Вики">
+
+    <button onclick="startListening()">🎤 Говори с мен</button>
+    
+    <div class="status" id="status">Готова съм...</div>
+    
+    <div class="box">
+        <strong>Чух:</strong><br>
+        <span id="heard"></span>
+    </div>
+    
+    <div class="box">
+        <strong>Отговор:</strong><br>
+        <span id="response"></span>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const heardEl = document.getElementById('heard');
+        const responseEl = document.getElementById('response');
+
+        const GEMINI_KEY = "AIzaSyDz8HVkb8_1_hwdOe2BKDjowr14ovxA-fk";   // твоят ключ
+
+        function startListening() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const rec = new SR();
+            rec.lang = 'bg-BG';
+
+            statusEl.textContent = "🎤 Слушам...";
+
+            rec.onresult = (e) => {
+                const text = e.results[0][0].transcript.trim();
+                heardEl.textContent = text;
+                sendToGemini(text);
+            };
+
+            rec.start();
+        }
+
+        async function sendToGemini(userText) {
+            statusEl.textContent = "🤔 Мисля...";
+
+            const prompt = `Ти си Вики - приятна и професионална сервитьорка в ресторант. Говориш на български, кратко и любезно.
+
+Меню:
+- Шопска салата – 8.90 лв.
+- Пилешка супа – 6.50 лв. (с фиде)
+- Цезар салата – 11.90 лв.
+- Пържола свинско – 19.90 лв.
+- Пиле на скара – 14.50 лв.
+- Веган боул – 12.90 лв.
+- Спагети Болонезе – 13.90 лв.
+- Паста с морски дарове – 17.90 лв.
+- Тирамису – 7.50 лв.
+- Домашна лимонада – 4.50 лв.
+
+Ако клиентът иска меню - покажи го.
+Ако прави поръчка - повтори я и попитай дали е правилна.
+Ако каже "да" или "потвърждавам" - кажи че поръчката е приета.
+Ако каже "извикай сервитьор" или "помощ" - кажи че ще извикаш човек.
+
+Клиентът каза: ${userText}
+
+Отговори само като Вики, кратко и естествено.`;
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await res.json();
+                let answer = data.candidates[0].content.parts[0].text.trim();
+
+                responseEl.textContent = answer;
+                statusEl.textContent = "Готово!";
+                speak(answer);
+
+            } catch (err) {
+                responseEl.textContent = "Извинявайте, имам малък проблем. Ей сега ще извикам истински сервитьор!";
+                speak("Извинявайте, имам малък проблем.");
+                statusEl.textContent = "Грешка";
+            }
+        }
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'bg-BG';
+            speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
